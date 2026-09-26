@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Ricevimento uva · Cantina Corte Manzini · v26</title>
+<title>Ricevimento uva · Cantina Corte Manzini · v27</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -70,6 +70,9 @@ h2{font-size:16px;margin-bottom:10px;color:#6b4423}
 .modal-in{background:#fff;width:100%;max-width:420px;border-radius:14px;padding:16px;margin-top:30px}
 .mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #f0ece2}
 .pill{border:none;background:#fdecea;color:#c0392b;border-radius:8px;padding:7px 11px;font-size:13px;font-weight:700}
+.pill.on{background:#2b5876;color:#fff}
+#sbircia-box .pill{background:#eef3f7;color:#2b5876}
+#sbircia-box .pill.on{background:#2b5876;color:#fff}
 .hint{font-size:12px;color:#8a7f6f;margin-top:8px;line-height:1.4}
 .seg{display:flex;gap:8px}
 .seg button{flex:1;height:50px;border:1px solid #ddd6c8;background:#fff;border-radius:10px;font-size:16px;font-weight:700;color:#6b6257}
@@ -129,7 +132,7 @@ h2{font-size:16px;margin-bottom:10px;color:#6b4423}
 <body>
 <header>
   <h1>Ricevimento uva</h1>
-  <div class="sub">Cantina Corte Manzini · v26</div>
+  <div class="sub">Cantina Corte Manzini · v27</div>
 </header>
 <div class="tabs">
   <button id="tb-car" class="on" onclick="setTab('car')">Carri</button>
@@ -177,6 +180,13 @@ h2{font-size:16px;margin-bottom:10px;color:#6b4423}
       <button class="big" style="margin-top:12px" onclick="esporta()">Copia per il computer</button>
       <div class="hint">Copia i carri da incollare nel programma Vinificazione. Dopo averli importati sul PC, segnali come passati.</div>
       <button class="ghost" style="margin-top:10px" onclick="archiviaPassati()">Archivia i carri già passati al PC</button>
+    </div>
+
+    <div class="card">
+      <h2>Guarda dal foglio Google</h2>
+      <div class="hint" style="margin:-4px 0 8px">Per vedere da questo telefono i carri registrati sul tablet. È solo una lettura: non tocca niente di quello che hai qui.</div>
+      <button class="big" onclick="sbircia()">⬇️ Vedi i carri dal foglio</button>
+      <div id="sbircia-box"></div>
     </div>
   </div>
 
@@ -1446,6 +1456,60 @@ function mostraTesto(t){ prompt("Tieni premuto per selezionare e copiare:",t); }
 function cloudAttivo(){ return !!(st.cloud&&String(st.cloud.url||"").trim()); }
 function daInviare(){ return st.carichi.filter(function(c){return !c.sync}); }
 function daInviareOre(){ return (st.ore||[]).filter(function(g){return !g.sync}); }
+/* ---- lettura dal foglio Google, senza salvare niente sul telefono ---- */
+var sbirciaDati=null, sbirciaGiorno="";
+function sbircia(){
+  var box=document.getElementById("sbircia-box");
+  if(!cloudAttivo()){ box.innerHTML='<div class="empty">Prima incolla il link del foglio Google nella scheda Nuvola.</div>'; return }
+  box.innerHTML='<div class="empty">Sto leggendo il foglio Google...</div>';
+  jsonp({azione:"list"},function(r){
+    if(!(r&&r.ok)){ box.innerHTML='<div class="empty">Non riesco a leggere il foglio: '+esc(String((r&&r.errore)||"rete"))+'.</div>'; return }
+    sbirciaDati=(r.carri||[]).map(function(x){
+      return {id:String(x.id||""),data:String(x.data||""),ora:String(x.ora||""),
+        vendemmia:(String(x.vendemmia||"")==="Mano"?"Mano":"Macchina"),
+        autista:String(x.autista||""),vigneto:String(x.vigneto||""),
+        vasca:String(x.vinificatore||""),hl:num(x.hl),importato:String(x.importato||"")};
+    });
+    var gg=giorniSbircia();
+    sbirciaGiorno=(gg.indexOf(oggi())>=0)?oggi():(gg[0]||"");
+    renderSbircia();
+  });
+}
+function giorniSbircia(){
+  var d={};(sbirciaDati||[]).forEach(function(c){ if(c.data)d[c.data]=true });
+  return Object.keys(d).sort().reverse();
+}
+function setSbirciaGiorno(g){ sbirciaGiorno=g; renderSbircia(); }
+function renderSbircia(){
+  var box=document.getElementById("sbircia-box"); if(!box)return;
+  if(!sbirciaDati){ box.innerHTML=""; return }
+  if(!sbirciaDati.length){ box.innerHTML='<div class="empty">Sul foglio non c\'è ancora nessun carro.</div>'; return }
+  var gg=giorniSbircia();
+  var scelta=gg.map(function(g){
+    return '<button class="pill'+(g===sbirciaGiorno?" on":"")+'" style="margin:0 6px 6px 0" onclick="setSbirciaGiorno(\''+g+'\')">'+esc(dataIt(g))+(g===oggi()?" · oggi":"")+'</button>';
+  }).join("");
+  var lista=sbirciaDati.filter(function(c){return c.data===sbirciaGiorno})
+    .sort(function(a,b){return String(a.ora).localeCompare(String(b.ora))});
+  // raggruppo per vinificatore
+  var m={},ord=[];
+  lista.forEach(function(c){ var v=c.vasca||"—"; if(!m[v]){m[v]=[];ord.push(v)} m[v].push(c); });
+  ord.sort(function(a,b){return String(a).localeCompare(String(b),"it",{numeric:true})});
+  var html='<div style="margin:10px 0 4px">'+scelta+'</div>';
+  ord.forEach(function(v){
+    var l=m[v], tv=l.reduce(function(s2,c){return s2+num(c.hl)},0);
+    html+='<div class="grp-h"><div class="grp-n">'+esc(v)+'</div><div class="grp-t">'+l.length+' carri · '+fmt(tv,1)+' hl</div></div>';
+    html+=l.map(function(c,i){
+      return '<div class="carro"><div class="n">'+(i+1)+'</div><div class="c-main">'+
+        '<div class="c-t">'+esc(c.autista)+(c.importato?'<span class="ok">✓ PC</span>':'')+'</div>'+
+        '<div class="c-s">'+esc(c.vigneto)+' · '+((c.vendemmia==="Mano")?"a mano":"a macchina")+' · '+esc(c.ora)+'</div>'+
+        '</div><div class="c-hl">'+fmt(c.hl,1)+' hl</div></div>';
+    }).join("");
+  });
+  var tot=lista.reduce(function(s2,c){return s2+num(c.hl)},0);
+  html+='<div class="tot"><div><b>'+lista.length+'</b><span>carri</span></div><div><b>'+fmt(tot,1)+'</b><span>hl del giorno</span></div></div>';
+  html+='<div class="hint" style="margin-top:8px">Sola lettura: questi carri restano sul foglio e sul tablet, qui non vengono salvati.</div>';
+  box.innerHTML=html;
+}
 function badgeCloud(c){
   if(!cloudAttivo())return "";
   return c.sync?'<span class="cl si">&#9729; ok</span>':'<span class="cl no">&#9203; in attesa</span>';
