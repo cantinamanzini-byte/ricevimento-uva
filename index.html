@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Ricevimento uva · Cantina Corte Manzini · v27</title>
+<title>Ricevimento uva · Cantina Corte Manzini · v28</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,6 +35,7 @@ button{font-family:inherit;cursor:pointer}
 .big{width:100%;height:54px;border:none;border-radius:11px;background:#8b5a2b;color:#fff;font-size:17px;font-weight:800}
 .big:active{transform:scale(.99)}
 .ghost{background:#f7f3ea;color:#6b4423;border:1px solid #ddd6c8;border-radius:10px;height:44px;font-size:14px;font-weight:700;width:100%}
+.ghost.urge{background:#8b5a2b;color:#fff;border-color:#8b5a2b}
 .res{border:2px solid #e0b96a;background:#fff8ec;border-radius:12px;overflow:hidden;margin-top:14px}
 .res-head{background:#f0e2c8;padding:8px 13px;font-size:12px;font-weight:800;color:#6b4423;text-align:center;text-transform:uppercase}
 .res-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px}
@@ -1211,6 +1212,9 @@ function recuperaDaGoogle(){
   if(!confirm("Rileggo tutto dal foglio Google e rimetto i dati sul telefono.\n\nQuello che hai gia' sul telefono resta com'e': aggiungo solo quello che manca.\n\nProcedo?"))return;
   var box=document.getElementById("listaArch");
   if(box)box.innerHTML='<div class="empty">Sto leggendo il foglio Google...</div>';
+  // lo dico anche nel riquadro verde: da li' si puo' premere senza aprire l'Archivio
+  var cb=document.getElementById("cloudBox");
+  if(cb){ var r=cb.querySelector(".cloud-s"); if(r)r.textContent="sto leggendo il foglio Google..."; }
   jsonp({azione:"list"},function(r){
     if(!(r&&r.ok)){ renderArch(); alert("Non riesco a leggere il foglio: "+((r&&r.errore)||"rete")+"."); return }
     var carri=r.carri||[];
@@ -1592,9 +1596,11 @@ function renderCloud(){
   box.innerHTML='<div class="cloud-t">Foglio Google: collegato</div>'+
     '<div class="cloud-s">'+esc(stato)+'</div>'+
     '<div class="row" style="margin-top:10px">'+
-      '<button class="ghost" onclick="sincronizza(false)">Invia ora</button>'+
-      '<button class="ghost" onclick="openCloud()">Impostazioni</button>'+
-    '</div>';
+      '<button class="ghost'+(voci.length?' urge':'')+'" onclick="sincronizza(false)">\u2b06\ufe0f Invia ora</button>'+
+      '<button class="ghost" onclick="recuperaDaGoogle()">\u2b07\ufe0f Scarica ora</button>'+
+    '</div>'+
+    '<div class="cloud-s" style="margin-top:8px">\u2b06\ufe0f manda su quello che hai scritto qui \u00b7 \u2b07\ufe0f porta gi\u00f9 quello che hanno scritto gli altri</div>'+
+    '<button class="ghost" style="margin-top:8px;height:34px;font-size:12.5px" onclick="openCloud()">Impostazioni foglio</button>';
 }
 function openCloud(){
   document.getElementById("cl-url").value=(st.cloud&&st.cloud.url)||"";
